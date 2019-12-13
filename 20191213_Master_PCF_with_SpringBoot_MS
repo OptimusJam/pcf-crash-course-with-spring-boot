@@ -1,0 +1,63 @@
+Pivotal Cloud Foundry with Spring Boot MS
+
+Section 2: Getting started with PCF
+	Create a free account in PCF and start with it.
+	Cloud foundry CLI -> install CLI (Use homebrew for mac)
+	Import Java Spring boot into IDE
+Section 3: Deploy SpringBoot Hello World Rest
+	Setting up SpringBoot Hello World Rest API in local
+	Setting up SpringBoot Hello World Rest API in PCF
+		Using PCF CLI
+			cf login to log into account -> cf login -a <API endpoint>
+				API endpoint: https://api.run.pivotal.io
+				Email and password
+			cf target -> target info (org and space)
+				to change -o new_org and -s new_space
+			cf push -> push an app to PCF -> cf push <app-name> --random-route
+				req: app name (for example: hello-world-rest-api)
+				route maps an URI to application -> routes are globally unique
+				use --random-route to change the route
+				specify buildpack -> run with maven clean package (if there are errors) -> create the app jar and deploy it to PCF
+					mvn clean package
+						redeploy the app -> maybe with manifest file, things work better
+					specify target file -p <target_file_location> -> no --random-route needed, already defined				
+			cf logs application_name -> to check logs
+	Exploring Cloud Foundry CLI
+		cf apps
+		cf routes -> way to access an application
+		cf map-route <app_name> <domain> --hostname <host_name>
+			add a new route to the same application
+		cf spaces
+		cf orgs
+		cf start <app_name> and cf stop <app_name> -> start and stop the application
+		cf restart <app-name>
+	Create an Application Manifest file
+		cf create-app-manifest <app_name> -> create manifest file for that application -> default name: manifest.yml
+			path: <path to the deployable unit => the jar file>
+	=============
+	To deploy: build a Jar (mvn clean package); cf push
+	=============
+	UnderstandingPCF Concepts: Droplet and build packs
+		cf push Stages:
+			Upload package (JAR file + manifest)
+			Staging -> creation of droplet => determine and run the buildpack to create droplet
+				droplet: self-contained unit: code, configuration and runtime
+				cf v3-droplets <app_name> -> to see all the droplet created until now.
+			Deployment of droplet into a cell
+				cell: similar to virtual server in the cloud
+	Configure PCF Java Build Pack for SpringBoot Application
+		Add
+			buildpacks: 
+			- <Buildpack> https://github.com/cloudfoundry/java-buildpack.git
+			timeout: <time in seconds> safe if the application takes a little longer to start
+			
+Section 4: Deploy Java Spring Boot TODO web app War to PCF (H2)
+	Credentials for the app: in28minutes / dummy
+	H2 Database url: jdbc:h2:mem:testdb
+	Deploy to cloud:
+		Create the package -> War file
+		Create a manifest file for the project -> cf create-app-manifest <app_name>
+			Add or Update information on manifest -> name, path to target, routes, buildpacks
+			
+Section 5: Deploy Java Spring Boot TODO web app War to PCF (MySQL)
+			
