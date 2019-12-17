@@ -1,3 +1,9 @@
+Others:
+	Warfare complete: https://steamcommunity.com/sharedfiles/filedetails/?id=1527621312
+	Steel and thunder; steel and thunder unique unites
+	German leader: https://steamcommunity.com/sharedfiles/filedetails/?id=1306876592
+	Isabel primera: https://steamcommunity.com/sharedfiles/filedetails/?id=898098597
+
 Pivotal Cloud Foundry with Spring Boot MS
 
 Section 2: Getting started with PCF
@@ -60,4 +66,145 @@ Section 4: Deploy Java Spring Boot TODO web app War to PCF (H2)
 			Add or Update information on manifest -> name, path to target, routes, buildpacks
 			
 Section 5: Deploy Java Spring Boot TODO web app War to PCF (MySQL)
+	Code Review
+		Add H2 to execute test
+		Use MySQL in production -> configure conection and ddl-auto=update to retain data
+	Running MySQL as Docker Container on Local
+		Launch MySQL Server Image https://hub.docker.com/_/mysql => how to use this image
+			docker images => see docker images in local
+			docker pull mysql:5.7
+			docker run mysql:5.7 (version 5.7)
+				Options needed to run this image:
+					-e MYSQL_ROOT_PASSWORD=dummypassword -e MYSQL_DATABASE=todos -e MYSQL_USER=todos-user -e MYSQL_PASSWORD=dummy_todos
+					-p 3306:3306 -> expose container port on local machine port (to access through MySQL client)
+					-name mysql -> especify name for the container
+			docker container list -> list of running containers
+			docker container stop <container_id> -> stop the container
+			docker container rm <container_id> -> remove the container			 
+		Connection to MySQL server -> MySQL Shell
+			mysqlsh
+				\connect -> connect to DB user_name@server
+				\sql -> use SQL syntax
+				\use -> schema to use
+	Connect SpringBoot App to MySQL on local
+		Application on startup creates the "todo" database
+	Exploring PWS UI and create a service for TODO DB on PCF
+		Login into PCF dashboard
+		Add service -> ClearDB MySQL Database
+			Instance name -> todo-database
+			cf services -> list all services
+			Also can be done by command line.
+	Connnect SpringBoot App with MySQL DB on PCF
+		Add manifest.yml
+			Rename and change route.
+			Add services that the application need -> todo-database
+		Create the jar (mvn clean package)
+		Push to CF -> cf push
+		Test the application
+		cf env <app_name> -> get environment information for PCF
+			Using env information, connect to cloud DB with MySQL Shell.
+				Server, User, Password
+	Understanding PCF Spring AutoConfiguration
+		Spring AutoReconfiguration Tasks
+			Add "cloud profile"
+			Exposes CF properties to APP
+			Rewrites bean defs to connect with services bound in App
+				Spring cloud dependencies -> manual and customization configuration
+					Look CloudFoundryDatabaseConfig.java file (from the project)
+				Rebuild and redeploy to cloud this new configuration
+
+Deploy Java Spring Boot React Full Stack App to PCF
+	Exploring application -> BE
+		Basic and JWT authentication
+	Exploring application -> FE
+		React app, need node & npm
+		Code location: 04 folder, frontend
+		install node with brew -> brew install node
+	Deploying Java REST API BE to PCF
+		Add manifest.yml to the project -> change app name and routes
+		Build project -> mvn clean package
+		Push to PCF -> cf push
+			Previous: stop other applications -> cf apps; cf stop <app_name>
+		Connect Local FE app to Cloud BE app
+			Export API_URL with url to cloud BE app -> https://rest-api-full-stack-jam.cfapps.io
+			============
+			ERROR -> develop FE in Angular
+				Angular CLI installed
+			============
+		Building FE App for PCF
+			Create a manifest file
+				Less mem
+				Path to build folder
+				change name and route
+				buildpack: staticfile for html and javascript
+			Create a combine manifest file for FE and BE
+		Exploring PCF UI
+			Springboot links -> only if you have actuator dependency in your pom.xml => Trace and threads links.
+			
+Getting started with CCS and CES MS on PCF
+	Introduction
+		Def of MS:
+			Services exposed by Rest 
+			Small well chosen deployable unit => well defined bounds
+			Cloud enabled => easily deploy new instances
+	MS - Challenges
+		Problem 1 -> Bounded context => identify boundaries as evolutionary process
+		Problem 2 -> Configure management => dif number of instance of each MS, load balance
+		Problem 3 -> Dinamic scale up and scale down
+		Problem 4 -> Visibility => identify where a bug is, trace use
+		Problem 5 -> Pack of cards 
+	MS - Advantages
+		Adv 1 -> New technology and porcess adaptation
+		Adv 2 -> Dynamic scaling => easy if they are cloud enable
+		Adv 3 -> Faster release cycles
+	CCS and CES overview
+		CCS: Currency Conversion Service
+		CES: Currency Exchange Service -> DB access
+	Push CCS and CES to PCF
+		build the product -> mvn clean package
+		Create manifest files
+			Update name, path to jar and routes
+			Updatae memory settings -> mem to 512 and edd environment vars
+	Run CCS and CES in PCF - Environment variables and instances
+		CCS: update route to CES in CurrencyExchangeServiceProxy -> set environment variable CURRENCY_EXCHANGE_URI to ces route in manifest
+			cf set-env <app> <variable> <value> => cf set-env currency-conversion-service CURRENCY_EXCHANGE_URI https://ces-jam.cfapps.io
+			Use 'cf restage currency-conversion-service' to ensure your env variable changes take effect
+		Check instance info
+		Added actuator dependency in pom.xml
+			configure management endpoints
+			idetify instance that reponse the request
+	Scaling CCS and CES MS on PCF
+		Create multiple instances of MS it depends in the load they recive
+		Increase number of CCS and CES instances and how they talk to each others
+			cf scale <app-name> -i <number of instances> => for CES
+			Follow behaviour with logs
+				cf logs <app-name>
+			Requests from CCS => several times to be attended by both different instances of CES
+		Scale CCS
+			cf scale <app_name> -i <number of instances>
+			Requests from CCS to see that the response comes back for different instances
+	Distributed tracing on PCF
+		Metrics -> logs => diff applications id: apps and routers
+			Can see all the logs associate a certain request
+		Include Spring-cloud-sleuth
+			Dependency in pom.xml
+			distributed tracing easy
+			
+Using service Registry for SpringBoot MS on PCF
+	Understanding the need for Service registry and Set up Eureka Server
+		Access env variables for an application
+			cf env <app_name>
+		One MS wants to ask the location of another MS to call -> ask a naming server (EurekaNamingSever for example)
+			CCS asks EurekaNS for the current instances of CES -> CES needs to be registered into EurekaNS
+		Setting up EurekaNS locally
+			Use the correspond service from PCF
+		EurekaNS
+			Dependency to Netflix Eureka
+			Add @EnableEurekaServer to SpringBoot Application Class
+			Define name and a default port -> not register for itself
+	Register CES MS to Eureka Service in local
+		Add dependency to Spring-cloud-services-starter-service-registry
+		Add @EnableDiscoveryClient to SpringBoot Application Class
+		Add at application.properties URL for UrekaNS -> where clients register to Eureka
+	Register CCS MS with Eureka Service and connect CES
 			
