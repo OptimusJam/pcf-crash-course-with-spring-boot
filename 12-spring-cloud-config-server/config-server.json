@@ -1,6 +1,6 @@
 {  
   "git":{  
-    "uri":"https://github.com/in28minutes/config-server.git",
+    "uri":"https://github.com/OptimusJam/dev-config-server-test.git",
     "label":"master",
     "searchPaths":"dev"
   }

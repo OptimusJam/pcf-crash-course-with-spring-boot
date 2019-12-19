@@ -3,6 +3,11 @@ Others:
 	Steel and thunder; steel and thunder unique unites
 	German leader: https://steamcommunity.com/sharedfiles/filedetails/?id=1306876592
 	Isabel primera: https://steamcommunity.com/sharedfiles/filedetails/?id=898098597
+	
+Cognizant laptop	
+	.\GDCUser
+	password !r@in321
+
 
 Pivotal Cloud Foundry with Spring Boot MS
 
@@ -205,6 +210,182 @@ Using service Registry for SpringBoot MS on PCF
 	Register CES MS to Eureka Service in local
 		Add dependency to Spring-cloud-services-starter-service-registry
 		Add @EnableDiscoveryClient to SpringBoot Application Class
-		Add at application.properties URL for UrekaNS -> where clients register to Eureka
+		Add to application.properties URL for EurekaNS -> where clients register to Eureka
 	Register CCS MS with Eureka Service and connect CES
+		Add dependency -> spring-cloud-services-starter-service-registry
+		Add @EnableDiscoveryClient to SpringBoot Application Class
+		Add to application.properties URL for EurekaNS 
+		Connect CCS to CES through Naming service
+			Update FeignClient -> remove URL to force to talk to naming service to retrieve service with provided app name
+	Create Service Registry to PCF and deploy CCS and CES
+		Creating Naming Service in Cloud
+			Service Registry from Marketplace
+				Trial free plan -> deleted after 7 days, needs to be started
+				Add to space and bind to one of the apps (CES)
+				Bind to CCS
+					Add Services to manifest
+						tag: services: - <Service_name>
+					package and push CES and CCS with this modifications
+				Unset environment variable CURRENCY_EXCHANGE_URI:
+					cf unset-env <app_name> <var_name>
+					Tip: use cf stage to ensure changes take effect => cf restage <app_name>
+					
+Exploring auto scaling on PCF
+	Autoscaling MS on PCF
+		Scale CCS and CES two to instances
+		Autoscaling: add or remove app instance of an application based on the percentage of resource(s) used 
+			Example: use over 70%, add instance; use less 50%, remove instance
+		Add PCF App Autoscaler CLI Plugin to PCF CLI
+			Download from: https://docs.run.pivotal.io/appsman-services/autoscaler/using-autoscaler-cli.html
+			Install plugin
+				cf install-pllugin <plugin-location>
+			Enable Autoscaling
+				cf enable-autoscaling <app_name>
+			Use
+				cf autoscaling-apps
+			Using UI for manual autoscaling
+				Configure instance limits, scaling rules,...
+				cd autoscaling-events <app_name>
+	Disable Auto scaling on PCF
+		cf disable-autoscaling <app_name>
+		
+Using Route services with PCF and Spring boot
+	Understanding Route sevice
+		API gateways
+			Authentication, authoriazation and security
+			Rate limits
+			Fault tolerance
+			Service Aggregation
+		In PCF -> routes => cf routes
+		Create a Route-User application to intercept calls to other apps and map them to the specific route
+			Log feature service
+			X_CF_FORWARDED_URL_HEADER -> to foward the url to the service
+		Push to pcf, after building the package
+			rename route to sbrs-jam from spring-boot-route-service
+		How this service can intercept routes
+			create a user-provided service (CUPS)
+				cf create-user-provided-service <app-name> -r https://<route_to_service>
+	Binding route services
+		show routes
+			cd routes
+		Bind routes in PCF (do for both service, ces and ccs)
+			cf bind-route-service <domain_name> --hostname <host_destiny> <service_that_intercept>
+		check log for serivce destiny and interceptor
+			cf logs <service_destiny>
+	Disable route services on PCF   
+		Unbind routes in PCF
+			cf unbind-route-service <domain_name> --hostname <host_destiny> <service_that_intercept>
+	Quick review of PCF
+		BOSH
+			Open source tools chain
+			Takes care of
+				Deployment
+				Lifecycle Management -> health monitoring, failure and recovery, software updates
+				
+Setting up Centralized configuration
+	Understanding centralized configuration for MS
+		Spring cloud config server locally -> will be replace by a cloud service in PCF
+			Dependency added:
+				spring-cloud-config-server
+			Anotation added to Spring boot application class:
+				@EnableConfigServer
+			Appliation properties:
+				server and name
+				spring cloud server git uri and search paths (folder in the repo)
+	Configure CCS to talk to SpringCloudConfigServer
+		Add dependency to pom file
+			Spring cloud services starter config client => client to talk to config server
+		Create a new file: bootstrap.properties
+			Location of the config server: spring.cloud.config.uri=http://localhost:8888
+			TODO: Remove application.properties and move data to application.properties default in config server
+		TASK: connect CES to config server -> DONE
+	Create a Github for Spring Cloud Sonfig Server
+		Repositorio Forked: https://github.com/OptimusJam/dev-config-server-test
+			To clone: https://github.com/OptimusJam/dev-config-server-test.git
+		Folder: environment
+		Files in the repo: <application_name>-<profile>.properties
+			Profile is optional
+			If no profile is added -> it is default config
+	Configure refresh Scope for SpringBoot Application
+		In controller, add annotation: @RefreshScope
+		Variables refreshed when Actuator is invoked
+			POST <application_url>/<actuator_url>/refresh => actuator_url is defined in application.properties
+	Create Cloud Config Service on PCF
+		Build CCS -> mvn clean package
+		On PCF UI
+			Create config server from marketplace -> Config Server
+			Using CLI
+				cf create-service p-config-server trial config-server -c config-server.json
+													<service>				<Plan> <server_name> <configuration_file>
+					<configuration_file> is in 12-spring-cloud-config-server, change URI to my repository
+					Execute in configuration file
+				cf services -> check all the services
+		Small changes in code
+			CCS:
+				update manifest.yml
+					Add config-server to services list
+		Communication between MS and PCF services authenticated by Oauth
+			Check variables in cf env <app_name>
+			
+Setting up Circuit breaker with Hystrix
+	Setting up Hystrix Circuit breaker on Local
+		FW for fault tolerance and return default responses back
+		Implementation
+			Add pom dependency
+				spring-cloud-services-starter-circuit-breaker (Hystrix)
+			Enable circuit breaker in springboot application class
+				@EnableCircuitBreaker
+			Add default response back in controller per method
+				Add @HystrixCommand to method (for example, GET) to configure a fallback method
+				Fallback method should match method signature (dif name, same args, remove @PathVariables)
+				Return a def. response in case of error
+			TIP: in case devtools error, remove the dependency from pom.xml
+	Create a circuit breaker service and deploy app on PCF
+		Marketplace -> service => circuit breaker
+			it's a Dashboard
+			Service name -> hystrix-dashboard
+			Not bind any application
+		For applications, in manifest.yml
+			Add new service in services
+				- hystrix-dashboard
+		Build MS and push to PCF
+		Access to Hystrix dashboard
+	Understand Hystrix Open and Close Circuit Features
+		curl call to ccs
+			Perform 200 calls on a short period -> watch -n <time> curl <url>
+				n: period of time to send each request, in seconds, min value 0.1
+			When Hystrix detect a lot of calls to a circuit broken (open), execute fallback method
+				Configurable property (watch histryx documentation)
+				Circuit close: circuit that works
+
+Exploring More features on PCF
+	Understand PCF Resilience and configure health checks for MS
+		Add health check endpoint
+			cf set-health-check currency-conversion-service thhp --endpoint /manage/health
+	Direct communitacion between MS
+		use network policies
+	Blue Green Deployment on PCF (https://martinfowler.com/bliki/BlueGreenDeployment.html)
+		Applications always available -> what happends during an update
+		Blue version of the application V1 - Blue
+			Version V2 - Green
+		Not direct deploy -> new version of the application for Green
+		Both versions in live and new version is test -> swith charge to new version
+		Process:
+			Build app and update manifest.yml
+				change name and route to temp-route
+			Push new app (Green version) to pcf
+			Test Green version -> Success
+			Map route
+				cf map-route <Green_app> <Domain> --hostname <production_url>
+			Unmap temp route
+			Send all traffic to green app -> unmap route from blue app
+				cf unmap-route <Blue-app> <Domain> --hostname <production_url>
+			Stop Blue Application
+	Deploy containers to PCF
+		look docker course from in28minutes
+			cf push <app_name> --docker <path_to_docker_image> --random-route
+		Tip
+			execute from a folder without a manifest.yml file
+			check memory available -> reduce memory in manifest to 256M
+		Check: https://github.com/in28minutes/docker
 			

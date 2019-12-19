@@ -14,3 +14,7 @@ applications:
   buildpacks: 
   - https://github.com/cloudfoundry/java-buildpack.git
   stack: cflinuxfs3
+  services:
+  - naming-service
+  - config-server
+  - hystrix-dashboard
